@@ -1,3 +1,5 @@
+#this code will be measuring the sampling speed 
+
 import spidev
 import time
 import binascii
@@ -12,16 +14,23 @@ spi.mode = 0
 #set mode if needed
 #set bit per word
 
-
+valuedec=[]
 try:
  while True:
+    to_send = [0x00, 0x00]
+    i=0
+
     start_time=time.time()
-    resp = spi.readbytes(2) # transfer one byte
-    timetotal=time.time()-start_time
-    print(timetotal)
+
+    while (int(time.time-start_time)) < 10: #record of 10 seconds
+      
+      resp= spi.xfer(to_send, int(8000000), int(0.01)) # (message, clock speed, delay between blocks,bits per words)
+      valuedec[i] = ((resp[0] << 8) | resp[1]) >>2  # moving first part to msb of 16bits then adding remaining lsb then moving first 2 bits as are not used
+      i += 1
+
+    print("number of recordings = ",i )
+    print("recording frequency = ", i/(time.time-start_time))
     #print('received : 0x{0}' .format(binascii.hexlify(bytearray(resp))))
-    print('received : {0:08b}'.format(resp[0]), end=" ")
-    print('{0:08b}'.format(resp[1]))
     #print(type(resp[0]))
     time.sleep(0.5) # sleep for 0.1 seconds
     #end while
