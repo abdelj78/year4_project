@@ -8,7 +8,7 @@ spi = spidev.SpiDev() # create spi object
 spi.open(0, 0) # open spi port 0, device (CS) 0
 
 spi.mode = 0 
-#spi.max_speed_hz=8000000
+spi.max_speed_hz=8000000
 #spi.bits_per_word=12
 #set max speed clock
 #set mode if needed
@@ -19,7 +19,8 @@ try:
  while True:
     start_time=time.time()
     to_send = [0x00, 0x00]
-    resp = spi.xfer(to_send, int(8000000), int(0.01)) # (message, clock speed, delay between blocks,bits per words)
+    #resp = spi.xfer(to_send, int(8000000), int(0.01)) # (message, clock speed, delay between blocks,bits per words)
+    resp = spi.readbytes(2) # transfer one byte
     timetotal=time.time()-start_time
     print(timetotal)
     valuedec= ((resp[0] << 8) | resp[1]) >>2  # moving first part to msb of 16bits then adding remaining lsb then moving first 2 bits as are not used
