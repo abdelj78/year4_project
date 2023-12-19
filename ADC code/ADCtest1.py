@@ -1,3 +1,5 @@
+#this code shows that the ADC seem to work and binary value increses as voltage increases 
+#but the reading is too slow 
 import spidev
 import time
 import binascii
