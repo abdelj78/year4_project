@@ -3,6 +3,8 @@
 import spidev
 import time
 import binascii
+import Adafruit_PureIO as spiada
+
 
 
 valuedec=[]
