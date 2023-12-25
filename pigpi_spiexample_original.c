@@ -32,38 +32,37 @@ the two chips are very similar.
 
 #include <pigpio.h>
 
-#define SPI_SS 8 // GPIO for slave select.
+#define SPI_SS 25 // GPIO for slave select.
 
-#define ADCS 1    // Number of connected MCP3XXX.
+#define ADCS 5    // Number of connected MCP3XXX.
 
 #define BITS 12            // Bits per reading.
-#define BX 3               // Bit position of data bit B11.
+#define BX 6               // Bit position of data bit B11.
 #define B0 (BX + BITS - 1) // Bit position of data bit B0.
 
-//#define MISO1 9   // 3202 1 MISO.
-//int MISO1 = 9;
-//#define MISO2 26  // 3202 2
-//#define MISO3 13  // 3008 1
-//#define MISO4 23  // 3008 2
-//#define MISO5 24  // 3008 3
+#define MISO1 6   // 3202 1 MISO.
+#define MISO2 26  // 3202 2
+#define MISO3 13  // 3008 1
+#define MISO4 23  // 3008 2
+#define MISO5 24  // 3008 3
 
 #define BUFFER 250       // Generally make this buffer as large as possible.
 
-#define REPEAT_MICROS 0.01 // Reading every x microseconds.
+#define REPEAT_MICROS 40 // Reading every x microseconds.
 
-#define SAMPLES 100000  // Number of samples to take,
+#define SAMPLES 2000000  // Number of samples to take,
 
-//int MISO[ADCS]={MISO1, MISO2, MISO3, MISO4, MISO5};
+int MISO[ADCS]={MISO1, MISO2, MISO3, MISO4, MISO5};
 
 rawSPI_t rawSPI =
 {
-   .clk     =  11, // GPIO for SPI clock.
+   .clk     =  5, // GPIO for SPI clock.
    .mosi    = 12, // GPIO for SPI MOSI.
    .ss_pol  =  1, // Slave select resting level.
    .ss_us   =  1, // Wait 1 micro after asserting slave select.
-   .clk_pol =  1, // Clock resting level.
+   .clk_pol =  0, // Clock resting level.
    .clk_pha =  0, // 0 sample on first edge, 1 sample on second edge.
-   .clk_us  =  0.0625, // 2 clocks needed per bit so 500 kbps.
+   .clk_us  =  1, // 2 clocks needed per bit so 500 kbps.
 };
 
 /*
@@ -73,7 +72,7 @@ rawSPI_t rawSPI =
 
 void getReading(
    int adcs,  // Number of attached ADCs.
-   int MISO, // The GPIO connected to the ADCs data out.
+   int *MISO, // The GPIO connected to the ADCs data out.
    int OOL,   // Address of first OOL for this reading.
    int bytes, // Bytes between readings.
    int bits,  // Bits per reading.
@@ -90,7 +89,7 @@ void getReading(
 
       for (a=0; a<adcs; a++)
       {
-         putBitInBytes(i, buf+(bytes*a), level & (1<<MISO));
+         putBitInBytes(i, buf+(bytes*a), level & (1<<MISO[a]));
       }
 
       p--;
@@ -100,7 +99,6 @@ void getReading(
 
 int main(int argc, char *argv[])
 {
-   int MISO1 = 9;
    int i, wid, offset;
    char buf[2];
    gpioPulse_t final[2];
@@ -113,7 +111,6 @@ int main(int argc, char *argv[])
    double start, end;
    int pause;
 
-   if (argc > 1) pause = atoi(argv[1]); else pause =0;
 
    if (gpioInitialise() < 0) return 1;
 
@@ -258,7 +255,7 @@ int main(int argc, char *argv[])
             OOL are calculated relative to the waves top OOL.
          */
          getReading(
-            ADCS, MISO1, topOOL - ((reading%BUFFER)*BITS) - 1, 2, BITS, rx);
+            ADCS, MISO, topOOL - ((reading%BUFFER)*BITS) - 1, 2, BITS, rx);
 
          printf("%d", ++sample);
 
@@ -267,7 +264,7 @@ int main(int argc, char *argv[])
             //   7   6  5  4  3  2  1  0 |  7  6  5  4  3  2  1  0
             // B11 B10 B9 B8 B7 B6 B5 B4 | B3 B2 B1 B0  X  X  X  X
 
-            val = (rx[i*2]<<8) + (rx[(i*2)+1]>>2);
+            val = (rx[i*2]<<4) + (rx[(i*2)+1]>>4);
 
             // ADCs 1-2 are 12 bit
             // ADCs 3-5 are 10 bit
@@ -276,14 +273,14 @@ int main(int argc, char *argv[])
             {
                val = (val & 0x3FF) << 2;
             }
-            //printf(" %d", val);
+            printf(" %d", val);
          }
 
          printf("\n");
 
          if (++reading >= BUFFER) reading = 0;
       }
-      //usleep(1000);
+      usleep(1000);
    }
 
    end = time_time();

@@ -34,31 +34,21 @@ the two chips are very similar.
 
 #define SPI_SS 8 // GPIO for slave select.
 
-#define ADCS 1    // Number of connected MCP3XXX.
-
 #define BITS 12            // Bits per reading.
 #define BX 3               // Bit position of data bit B11.
 #define B0 (BX + BITS - 1) // Bit position of data bit B0.
 
-//#define MISO1 9   // 3202 1 MISO.
-//int MISO1 = 9;
-//#define MISO2 26  // 3202 2
-//#define MISO3 13  // 3008 1
-//#define MISO4 23  // 3008 2
-//#define MISO5 24  // 3008 3
 
 #define BUFFER 250       // Generally make this buffer as large as possible.
 
-#define REPEAT_MICROS 0.01 // Reading every x microseconds.
+#define REPEAT_MICROS 0.2 // Reading every x microseconds.
 
 #define SAMPLES 100000  // Number of samples to take,
-
-//int MISO[ADCS]={MISO1, MISO2, MISO3, MISO4, MISO5};
 
 rawSPI_t rawSPI =
 {
    .clk     =  11, // GPIO for SPI clock.
-   .mosi    = 12, // GPIO for SPI MOSI.
+   .mosi    = 10, // GPIO for SPI MOSI.
    .ss_pol  =  1, // Slave select resting level.
    .ss_us   =  1, // Wait 1 micro after asserting slave select.
    .clk_pol =  1, // Clock resting level.
@@ -72,40 +62,37 @@ rawSPI_t rawSPI =
 */
 
 void getReading(
-   int adcs,  // Number of attached ADCs.
    int MISO, // The GPIO connected to the ADCs data out.
    int OOL,   // Address of first OOL for this reading.
    int bytes, // Bytes between readings.
    int bits,  // Bits per reading.
    char *buf) 
 {
-   int i, a, p;
+   int i, p;
    uint32_t level;
 
    p = OOL;
 
    for (i=0; i<bits; i++)
    {
-      level = rawWaveGetOut(p);
+    level = rawWaveGetOut(p);
 
-      for (a=0; a<adcs; a++)
-      {
-         putBitInBytes(i, buf+(bytes*a), level & (1<<MISO));
-      }
+    putBitInBytes(i, buf, level & (1<<MISO));
 
-      p--;
+    p--;
    }
 }
 
 
 int main(int argc, char *argv[])
 {
-   int MISO1 = 9;
+    //int val[SAMPLES];
+    int MISO1 = 9;
    int i, wid, offset;
    char buf[2];
    gpioPulse_t final[2];
    char rx[8];
-   int sample;
+   int sample=0;
    int val;
    int cb, botCB, topOOL, reading, now_reading;
    float cbs_per_reading;
@@ -113,7 +100,7 @@ int main(int argc, char *argv[])
    double start, end;
    int pause;
 
-   if (argc > 1) pause = atoi(argv[1]); else pause =0;
+    if (argc > 1) pause = atoi(argv[1]); else pause =0;
 
    if (gpioInitialise() < 0) return 1;
 
@@ -161,7 +148,7 @@ int main(int argc, char *argv[])
    {
       buf[0] = 0xC0; // Start bit, single ended, channel 0.
 
-      rawWaveAddSPI(&rawSPI, offset, SPI_SS, buf, 2, BX, B0, B0);
+      rawWaveAddSPI(&rawSPI, offset, SPI_SS, buf, 2, BX, B0, 0);
 
       /*
          REPEAT_MICROS must be more than the time taken to
@@ -237,7 +224,6 @@ int main(int argc, char *argv[])
 
    reading = 0;
 
-   sample = 0;
 
    start = time_time();
 
@@ -257,33 +243,22 @@ int main(int argc, char *argv[])
             Each reading uses BITS OOL.  The position of this readings
             OOL are calculated relative to the waves top OOL.
          */
-         getReading(
-            ADCS, MISO1, topOOL - ((reading%BUFFER)*BITS) - 1, 2, BITS, rx);
+         getReading(MISO1, topOOL - ((reading%BUFFER)*BITS) - 1, 2, BITS, rx);
 
-         printf("%d", ++sample);
+         //printf("%d", ++sample);
+         
 
-         for (i=0; i<ADCS; i++)
-         {
             //   7   6  5  4  3  2  1  0 |  7  6  5  4  3  2  1  0
             // B11 B10 B9 B8 B7 B6 B5 B4 | B3 B2 B1 B0  X  X  X  X
 
-            val = (rx[i*2]<<8) + (rx[(i*2)+1]>>2);
-
-            // ADCs 1-2 are 12 bit
-            // ADCs 3-5 are 10 bit
-
-            if (i>1) // Scale 0-1023 to 0-4095
-            {
-               val = (val & 0x3FF) << 2;
-            }
+            val = (rx[1]<<8) + (rx[0]>>2);
             //printf(" %d", val);
-         }
-
-         printf("\n");
+            ++sample;
+         //printf("\n");
 
          if (++reading >= BUFFER) reading = 0;
       }
-      //usleep(1000);
+      usleep(1000);
    }
 
    end = time_time();

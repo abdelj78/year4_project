@@ -1,0 +1,3 @@
+first you have to be in the file directory
+compiling: gcc -Wall -o nameofcompiledfileyouwant -lpigpio filenametobecompiled.c   //the -lpigpio is to link to the library or something like that because vscode compiler cant find it or something try to sort out later
+running:sudo ./nameofcompiledfileyouwant.out
