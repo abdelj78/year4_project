@@ -56,31 +56,76 @@ int main(int argc, char **argv)
     // followed by as many 0 bytes as you expect returned data bytes. After the transfer, you 
     // Can the read the reply bytes from the buffer.
     // If you tie MISO to MOSI, you should read back what was sent.
-    int samplemax= 10000000;
+    int samplemax= 2000000;
     int sample=0;
     double start, end; 
-    char tbuf[] = { 0x01, 0x02 }; // Data to send
+    char tbuf[] = {0x01, 0x02}; // Data to send
     char rbuf[] = {0x00, 0x00};
+    uint16_t values[samplemax];
+    float voltages[20];
     struct timespec remaining,request = {20,20};
-
+    double timetest = 5;
+    clock_t startc, endc;
+    double total_t;
+    double timebetweenblock = 0.000000010;
+    int count;
+    //printf("clock per sec = %f \n", (double)CLOCKS_PER_SEC);
     start=time(NULL);
-    while(sample<samplemax)
+    //startc= clock();
+
+    while(sample < samplemax)
     {
         bcm2835_spi_transfernb(tbuf, rbuf, sizeof(tbuf));
+        
+        bcm2835_st_delay(0,1);
+        values[sample] = 0x0FFF & ((((uint16_t)(rbuf[0])<<8) | ((uint16_t)rbuf[1]))>>2);
         ++sample;
+        //count=0;
         //printf("sample = %d",sample);
         //usleep(0.1);
         
         //int response = nanosleep(&request,&remaining);
+        //int response = clock_nanosleep(CLOCK_REALTIME, 0, &request,NULL);
+        /*startc= clock();
+        
+        while(((double)(clock()-startc)/CLOCKS_PER_SEC) < timebetweenblock)
+        {
+          printf("count = %d", ++count);
+        } //DO NOTHING
+        */
+        
+        /*
+        if (response == 0)
+        {
+          printf("nap was successful \n");
+      
+        }
+        else
+        {
+          printf("nap was interrupted \n");
+        }*/
     }
 
     end=time(NULL);
-    
+    //endc=clock();
     // buf will now be filled with the data that was read from the slave
     //printf("Read from SPI: %02X  %02X \n", rbuf[0], rbuf[1]);
        printf("# %d samples in %.1f seconds (%.0f/s)\n",
       sample, end-start, (float)sample/(end-start));
+      printf("decimal = %d\n", values[0]);
+      printf("voltage = %.3f\n", (values[0]*3.3/4095));
+      
+      for(int i=0; i<20; i++)
+      {
+          voltages[i]= (((float)values[i])*3.3/4095);
+          printf("%.3f\n", (float)voltages[i]);
+      }
 
+          
+      
+      
+      
+      //printf("time taken according to clock = %f \n", ((double)(endc-startc)/CLOCKS_PER_SEC));
     bcm2835_spi_end();
     bcm2835_close();
     return 0;
